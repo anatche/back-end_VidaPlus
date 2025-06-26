@@ -19,3 +19,14 @@ class Profissional(db.Model):
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "cpf": self.cpf,
+            "especialidade": self.especialidade,
+            "registro_profissional": self.registro_profissional,
+            "email": self.email,
+            "telefone": self.telefone
+        }

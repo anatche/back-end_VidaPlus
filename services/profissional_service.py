@@ -18,23 +18,30 @@ def criar_profissional(data):
 def listar_profissionais():
     return Profissional.query.all()
 
-def buscar_profissional_por_id(profissional_id):
+def buscar_profissional(profissional_id):
     return Profissional.query.get_or_404(profissional_id)
 
 def deletar_profissional(profissional_id):
-    profissional = buscar_profissional_por_id(profissional_id)
+    profissional = buscar_profissional(profissional_id)
     db.session.delete(profissional)
     db.session.commit()
+    return True
 
-def autenticar_profissional(nome, especialidade, senha):
+def login_profissional(data):
+    nome = data.get('nome')
+    especialidade = data.get('especialidade')
+    senha = data.get('senha')
     profissional = Profissional.query.filter_by(nome=nome, especialidade=especialidade).first()
     if profissional and profissional.verificar_senha(senha):
-        return profissional
-    return None
+        return {"sucesso": True, "profissional": profissional}
+    return {"sucesso": False}
 
-def atualizar_senha_profissional(profissional_id, nova_senha):
-    profissional = buscar_profissional_por_id(profissional_id)
+def trocar_senha_profissional(profissional_id, data):
+    nova_senha = data.get('nova_senha')
+    if not nova_senha:
+        return False
+    profissional = buscar_profissional(profissional_id)
     profissional.set_senha(nova_senha)
     profissional.primeiro_acesso = False
     db.session.commit()
-    return profissional
+    return True

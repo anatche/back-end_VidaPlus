@@ -6,7 +6,7 @@ from error_handlers import register_error_handlers
 def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
-
+    
     db.init_app(app)
     ma.init_app(app)
     app.url_map.strict_slashes = False
@@ -42,3 +42,4 @@ if __name__ == "__main__":
         from models.profissional_model import Profissional
         db.create_all()
     app.run(debug=True)
+
