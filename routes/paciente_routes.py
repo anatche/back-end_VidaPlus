@@ -1,69 +1,66 @@
 from flask import Blueprint, request, jsonify
+from models.paciente import Paciente
+from extensions import db
 from schemas.paciente_schema import PacienteSchema
-from services.paciente_service import PacienteService
 from marshmallow import ValidationError
-from routes.auth_utils import token_required
 
-paciente_bp = Blueprint('paciente_bp', __name__, url_prefix='/pacientes')
+paciente_bp = Blueprint('pacientes', __name__, url_prefix='/pacientes')
 
 paciente_schema = PacienteSchema()
-pacientes_schema = PacienteSchema(many=True)
+paciente_schema_partial = PacienteSchema(partial=True)  # para atualizações parciais
 
-# Listar todos os pacientes (rota protegida)
-@paciente_bp.route('/', methods=['GET'])
-@token_required
-def listar_pacientes(current_user):
-    pacientes = PacienteService.listar_todos()
-    return jsonify(pacientes_schema.dump(pacientes))
-
-# Buscar paciente por ID (rota protegida)
-@paciente_bp.route('/<int:id>', methods=['GET'])
-@token_required
-def buscar_paciente(current_user, id):
-    paciente = PacienteService.buscar_por_id(id)
-    return jsonify(paciente_schema.dump(paciente))
-
-# Criar novo paciente (rota protegida)
 @paciente_bp.route('/', methods=['POST'])
-@token_required
-def criar_paciente(current_user):
+def criar_paciente():
     json_data = request.get_json()
     if not json_data:
-        return jsonify({"message": "Nenhum dado informado"}), 400
+        return jsonify({"message": "Nenhum dado enviado"}), 400
 
     try:
         paciente = paciente_schema.load(json_data)
-        paciente = PacienteService.criar(paciente)
-        return jsonify(paciente_schema.dump(paciente)), 201
+    except ValidationError as err:
+        return jsonify({"message": "Erro de validação", "errors": err.messages}), 400
 
-    except ValidationError as ve:
-        return jsonify({"message": "Erro de validação", "errors": ve.messages}), 400
+    db.session.add(paciente)
+    db.session.commit()
+    resultado = paciente_schema.dump(paciente)
+    return jsonify(resultado), 201
 
-    except ValueError as ve:
-        return jsonify({"message": str(ve)}), 400
+@paciente_bp.route('/', methods=['GET'])
+def listar_pacientes():
+    pacientes = Paciente.query.all()
+    resultado = paciente_schema.dump(pacientes, many=True)
+    return jsonify(resultado), 200
 
-# Atualizar paciente existente (rota protegida)
+@paciente_bp.route('/<int:id>', methods=['GET'])
+def buscar_paciente(id):
+    paciente = Paciente.query.get_or_404(id)
+    resultado = paciente_schema.dump(paciente)
+    return jsonify(resultado), 200
+
 @paciente_bp.route('/<int:id>', methods=['PUT'])
-@token_required
-def atualizar_paciente(current_user, id):
+def atualizar_paciente(id):
+    paciente = Paciente.query.get_or_404(id)
     json_data = request.get_json()
+
     if not json_data:
-        return jsonify({"message": "Nenhum dado informado"}), 400
+        return jsonify({"message": "Nenhum dado enviado para atualização."}), 400
 
     try:
-        dados_atualizados = paciente_schema.load(json_data, partial=True)
-        paciente = PacienteService.atualizar(id, dados_atualizados)
-        return jsonify(paciente_schema.dump(paciente)), 200
+        dados_atualizados = paciente_schema_partial.load(json_data)
 
-    except ValidationError as ve:
-        return jsonify({"message": "Erro de validação", "errors": ve.messages}), 400
+        for key, value in dados_atualizados.items():
+            setattr(paciente, key, value)
 
-    except ValueError as ve:
-        return jsonify({"message": str(ve)}), 400
+        db.session.commit()
+        resultado = paciente_schema.dump(paciente)
+        return jsonify(resultado), 200
 
-# Deletar paciente (rota protegida)
+    except ValidationError as err:
+        return jsonify({"message": "Erro de validação", "errors": err.messages}), 400
+
 @paciente_bp.route('/<int:id>', methods=['DELETE'])
-@token_required
-def deletar_paciente(current_user, id):
-    PacienteService.deletar(id)
-    return jsonify({"message": "Paciente deletado com sucesso!"}), 200
+def deletar_paciente(id):
+    paciente = Paciente.query.get_or_404(id)
+    db.session.delete(paciente)
+    db.session.commit()
+    return jsonify({"message": "Paciente deletado com sucesso."}), 200

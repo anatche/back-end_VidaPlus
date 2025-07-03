@@ -12,12 +12,11 @@ class Profissional(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     telefone = db.Column(db.String(20), nullable=True)
     senha_hash = db.Column(db.String(128), nullable=False)
-    primeiro_acesso = db.Column(db.Boolean, default=True)
 
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
 
-    def verificar_senha(self, senha):
+    def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
     def to_dict(self):
@@ -30,3 +29,4 @@ class Profissional(db.Model):
             "email": self.email,
             "telefone": self.telefone
         }
+ 

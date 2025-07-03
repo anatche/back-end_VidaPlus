@@ -1,24 +1,20 @@
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from marshmallow import validate, fields
+from marshmallow import validate, fields, post_load
 from models.paciente import Paciente
-from extensions import db  # importa o db para pegar a sessão
+from extensions import db
+from datetime import date
 
 class PacienteSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Paciente
         load_instance = True
-        sqla_session = db.session  # ESSENCIAL para corrigir o erro!
+        sqla_session = db.session
 
     id = fields.Int(dump_only=True)
 
     nome = fields.Str(
         required=True,
         validate=validate.Length(min=1, error="O nome é obrigatório.")
-    )
-
-    idade = fields.Int(
-        required=True,
-        validate=validate.Range(min=0, max=130, error="A idade deve estar entre 0 e 130.")
     )
 
     cpf = fields.Str(
@@ -35,3 +31,19 @@ class PacienteSchema(SQLAlchemyAutoSchema):
         required=True,
         error_messages={"invalid": "Formato de e-mail inválido."}
     )
+
+    data_nascimento = fields.Date(
+        required=True,
+        error_messages={"invalid": "A data deve estar no formato YYYY-MM-DD."}
+    )
+
+    idade = fields.Int(dump_only=True)
+
+    @post_load
+    def calcular_idade(self, data, **kwargs):
+        if 'data_nascimento' in data:
+            hoje = date.today()
+            nascimento = data['data_nascimento']
+            idade = hoje.year - nascimento.year - ((hoje.month, hoje.day) < (nascimento.month, nascimento.day))
+            data['idade'] = idade
+        return data

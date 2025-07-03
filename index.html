@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>VidaPlus</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f7f9fc;
+      color: #333;
+    }
+    h1, h2 {
+      color: #005f73;
+    }
+    section {
+      background: #fff;
+      padding: 15px 20px;
+      margin-bottom: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    form > * {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
+      max-width: 400px;
+    }
+    input, select, button {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1em;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+      background: #0a9396;
+      color: white;
+      border: none;
+      transition: background 0.3s ease;
+      max-width: 200px;
+    }
+    button:hover {
+      background: #007f7f;
+    }
+    #msg-paciente, #msg-consulta {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 5px;
+      max-width: 400px;
+    }
+    .msg-sucesso {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+    .msg-erro {
+      background-color: #f8d7da;
+      color: #842029;
+    }
+    ul#lista-consultas {
+      list-style: inside disc;
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <h1>VidaPlus</h1>
+
+  <section>
+    <h2>Cadastrar Paciente</h2>
+    <form id="form-paciente" onsubmit="cadastrarPaciente(event)">
+        <input type="text" name="nome" placeholder="Nome" required />
+        <input type="text" name="cpf" placeholder="CPF (000.000.000-00)" required />
+        <input type="email" name="email" placeholder="Email" required />
+        <input type="text" name="telefone" placeholder="Telefone" required />
+        <input type="date" name="data_nascimento" placeholder="Data de nascimento" required />
+        <button type="submit">Cadastrar Paciente</button>
+    </form>
+    <div id="msg-paciente"></div>
+  </section>
+
+  <section>
+    <h2>Agendar Consulta</h2>
+    <form id="form-consulta" onsubmit="agendarConsulta(event)">
+      <input type="date" name="data" required />
+      <input type="time" name="hora" required />
+
+      <label for="tipo">Tipo da consulta:</label>
+      <select name="tipo" id="tipo" required>
+        <option value="presencial">Presencial</option>
+        <option value="online">Online</option>
+      </select>
+
+      <label for="paciente-select">Paciente:</label>
+      <input type="hidden" id="paciente-id" name="paciente_id" />
+
+      <label for="medico-select">Médico:</label>
+      <select id="medico-select" name="profissional_id" required>
+        <option value="">Selecione um médico</option>
+      </select>
+
+      <button type="submit">Agendar Consulta</button>
+    </form>
+    <div id="msg-consulta"></div>
+  </section>
+
+  <section>
+    <h2>Listar Consultas</h2>
+    <button onclick="listarConsultas()">Carregar Consultas</button>
+    <ul id="lista-consultas"></ul>
+  </section>
+
+  <script>
+    const baseURL = "http://127.0.0.1:5000";
+
+    async function cadastrarPaciente(event) {
+      event.preventDefault();
+      const form = event.target;
+      const msgDiv = document.getElementById('msg-paciente');
+      msgDiv.textContent = 'Cadastrando paciente...';
+      msgDiv.className = '';
+
+      const data = {
+        nome: form.nome.value.trim(),
+        cpf: form.cpf.value.trim(),
+        email: form.email.value.trim(),
+        telefone: form.telefone.value.trim(),
+        data_nascimento: form.data_nascimento.value
+      };
+
+      try {
+        const res = await fetch(`${baseURL}/pacientes/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Erro desconhecido');
+        }
+
+        const novoPaciente = await res.json();
+        msgDiv.textContent = 'Paciente cadastrado com sucesso!';
+        msgDiv.className = 'msg-sucesso';
+        form.reset();
+
+        document.getElementById('paciente-id').value = novoPaciente.id;
+
+      } catch (error) {
+        msgDiv.textContent = `Erro ao cadastrar paciente: ${error.message}`;
+        msgDiv.className = 'msg-erro';
+      }
+      sumirMsg(msgDiv);
+    }
+
+    async function agendarConsulta(event) {
+      event.preventDefault();
+      const form = event.target;
+      const msgDiv = document.getElementById('msg-consulta');
+      msgDiv.textContent = 'Agendando consulta...';
+      msgDiv.className = '';
+
+      const data = {
+        data: form.data.value,
+        hora: form.hora.value,
+        paciente_id: Number(form.paciente_id.value),
+        profissional_id: Number(form.profissional_id.value),
+        tipo: form.tipo.value
+      };
+
+      try {
+        const res = await fetch(`${baseURL}/consultas/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Erro desconhecido');
+        }
+
+        msgDiv.textContent = 'Consulta agendada com sucesso!';
+        msgDiv.className = 'msg-sucesso';
+        form.reset();
+      } catch (error) {
+        msgDiv.textContent = `Erro ao agendar consulta: ${error.message}`;
+        msgDiv.className = 'msg-erro';
+      }
+      sumirMsg(msgDiv);
+    }
+
+    async function listarConsultas() {
+      const ul = document.getElementById('lista-consultas');
+      ul.innerHTML = 'Carregando...';
+
+      try {
+        const res = await fetch(`${baseURL}/consultas/`);
+        if (!res.ok) throw new Error(`Erro: ${res.status}`);
+        const consultas = await res.json();
+
+        if (consultas.length === 0) {
+          ul.innerHTML = '<li>Nenhuma consulta encontrada.</li>';
+          return;
+        }
+
+        ul.innerHTML = '';
+        consultas.forEach(c => {
+          const li = document.createElement('li');
+          li.textContent = `ID: ${c.id} | Data: ${c.data} | Hora: ${c.hora} | Tipo: ${c.tipo} | Status: ${c.status} | Paciente ID: ${c.paciente_id} | Médico ID: ${c.profissional_id}`;
+          ul.appendChild(li);
+        });
+      } catch (error) {
+        ul.innerHTML = `Erro ao carregar consultas: ${error.message}`;
+      }
+    }
+
+    async function carregarMedicos() {
+      try {
+        const res = await fetch(`${baseURL}/profissionais/`);
+        if (!res.ok) throw new Error(`Erro ao carregar médicos: ${res.status}`);
+        const medicos = await res.json();
+        const select = document.getElementById('medico-select');
+        select.innerHTML = '<option value="">Selecione um médico</option>';
+        medicos.forEach(m => {
+          const option = document.createElement('option');
+          option.value = m.id;
+          option.textContent = m.nome;
+          select.appendChild(option);
+       });
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function sumirMsg(elemento) {
+      setTimeout(() => {
+        elemento.textContent = '';
+        elemento.className = '';
+      }, 5000);
+    }
+
+    window.onload = () => {
+      carregarMedicos();
+    };
+  </script>
+</body>
+</html>
