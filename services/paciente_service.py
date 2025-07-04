@@ -6,30 +6,33 @@ class PacienteService:
 
     @staticmethod
     def listar_todos():
+        """Retorna todos os pacientes cadastrados."""
         return Paciente.query.all()
 
     @staticmethod
     def buscar_por_id(id):
+        """Busca um paciente pelo ID ou retorna 404."""
         return Paciente.query.get_or_404(id)
 
     @staticmethod
-    def criar(paciente):
-        try:
-            db.session.add(paciente)
-            db.session.commit()
-            return paciente
-        except IntegrityError:
-            db.session.rollback()
-            raise ValueError("CPF ou email já cadastrado.")
+    def criar(data):
+        cpf_existente = Paciente.query.filter_by(cpf=data['cpf']).first()
+        email_existente = Paciente.query.filter_by(email=data['email']).first()
+
+        if cpf_existente or email_existente:
+            raise ValueError("CPF ou email já cadastrado")
+
+        paciente = Paciente(**data)
+        db.session.add(paciente)
+        db.session.commit()
+        return paciente
 
     @staticmethod
-    def atualizar(id, dados_atualizados):
+    def atualizar(id, update_data):
+        """Atualiza os dados de um paciente existente."""
         paciente = Paciente.query.get_or_404(id)
 
-        dados_dict = dados_atualizados.__dict__.copy()
-        dados_dict.pop("_sa_instance_state", None)
-
-        for key, value in dados_dict.items():
+        for key, value in update_data.items():
             setattr(paciente, key, value)
 
         try:
@@ -44,6 +47,7 @@ class PacienteService:
 
     @staticmethod
     def deletar(id):
+        """Remove um paciente do banco de dados."""
         paciente = Paciente.query.get_or_404(id)
         db.session.delete(paciente)
         db.session.commit()

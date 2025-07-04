@@ -10,10 +10,13 @@ profissionais_schema = ProfissionalSchema(many=True)
 @profissional_bp.route('/', methods=['POST'])
 def criar():
     data = request.get_json()
+
     if Profissional.query.filter_by(cpf=data.get('cpf')).first():
         return jsonify({"message": "CPF já cadastrado."}), 400
+
     if Profissional.query.filter_by(email=data.get('email')).first():
         return jsonify({"message": "Email já cadastrado."}), 400
+
     profissional = Profissional(
         nome=data.get('nome'),
         cpf=data.get('cpf'),
@@ -22,11 +25,12 @@ def criar():
         email=data.get('email'),
         telefone=data.get('telefone')
     )
-   
+
     profissional.set_senha(data.get('senha'))
 
     db.session.add(profissional)
     db.session.commit()
+
     return jsonify(profissional_schema.dump(profissional)), 201
 
 
@@ -38,8 +42,8 @@ def listar():
 
 @profissional_bp.route('/<int:id>', methods=['GET'])
 def buscar(id):
-    profissionais = Profissional.query.all()
-    return jsonify(profissionais_schema.dump(profissionais)), 200
+    profissional = Profissional.query.get_or_404(id)
+    return jsonify(profissional_schema.dump(profissional)), 200
 
 
 @profissional_bp.route('/<int:id>', methods=['PUT'])
@@ -49,23 +53,28 @@ def atualizar(id):
 
     if 'nome' in data:
         profissional.nome = data['nome']
+
     if 'cpf' in data:
-        # Verifica se o CPF já existe para outro profissional
         existente = Profissional.query.filter_by(cpf=data['cpf']).first()
         if existente and existente.id != id:
             return jsonify({"message": "CPF já cadastrado por outro profissional."}), 400
         profissional.cpf = data['cpf']
+
     if 'especialidade' in data:
         profissional.especialidade = data['especialidade']
+
     if 'registro_profissional' in data:
         profissional.registro_profissional = data['registro_profissional']
+
     if 'email' in data:
         existente = Profissional.query.filter_by(email=data['email']).first()
         if existente and existente.id != id:
             return jsonify({"message": "Email já cadastrado por outro profissional."}), 400
         profissional.email = data['email']
+
     if 'telefone' in data:
         profissional.telefone = data['telefone']
+
     if 'senha' in data:
         profissional.set_senha(data['senha'])
 
@@ -86,10 +95,13 @@ def login():
     data = request.get_json()
     email = data.get('email')
     senha = data.get('senha')
+
     if not email or not senha:
         return jsonify({"message": "Email e senha são obrigatórios"}), 400
+
     profissional = Profissional.query.filter_by(email=email).first()
+
     if not profissional or not profissional.check_senha(senha):
         return jsonify({"message": "Credenciais inválidas"}), 401
-    # Retorna os dados do profissional sem senha
+
     return jsonify(profissional_schema.dump(profissional)), 200
